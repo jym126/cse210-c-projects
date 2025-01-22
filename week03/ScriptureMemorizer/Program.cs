@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace ScriptureHider
@@ -8,11 +9,82 @@ namespace ScriptureHider
     {
         static void Main(string[] args)
         {
-            // Create a scripture object with reference and text
-            Scripture scripture = new Scripture(new Reference("Proverbs", 3, 5, 6), 
-                "Trust in the Lord with all your heart and lean not on your own understanding; in all your ways submit to him, and he will make your paths straight.");
+            // Load scriptures from a file
+            List<Scripture> scriptures = LoadScripturesFromFile("scriptures.txt");
+            
+            // Ensure there are scriptures available in the list
+            if (scriptures.Count == 0)
+            {
+                Console.WriteLine("No scriptures found in the file. Please add scriptures to the file and try again.");
+                return;
+            }
 
-            // Main loop to hide words and display scripture
+            // Display the list of available scriptures to the user
+            Console.WriteLine("Select scriptures to memorize:");
+            for (int i = 0; i < scriptures.Count; i++)
+            {
+                Console.WriteLine($"{i + 1}. {scriptures[i].ToString()}");
+            }
+
+            // Get the user's selection of scriptures
+            Console.WriteLine("\nEnter the numbers of the scriptures you want to memorize, separated by commas (e.g., 1,3,5):");
+            string input = Console.ReadLine()?.Trim();
+
+            List<int> selectedIndexes = input?.Split(',')
+                                            .Select(i => int.TryParse(i.Trim(), out int index) ? index - 1 : -1)
+                                            .Where(index => index >= 0 && index < scriptures.Count)
+                                            .ToList();
+
+            // If no valid scriptures were selected
+            if (selectedIndexes == null || selectedIndexes.Count == 0)
+            {
+                Console.WriteLine("No valid scriptures selected. Exiting...");
+                return;
+            }
+
+            // Let the user memorize each selected scripture
+            foreach (int index in selectedIndexes)
+            {
+                Scripture selectedScripture = scriptures[index];
+                MemorizeScripture(selectedScripture);
+            }
+        }
+
+        // Method to load scriptures from a text file
+        public static List<Scripture> LoadScripturesFromFile(string filePath)
+        {
+            List<Scripture> scriptures = new List<Scripture>();
+
+            try
+            {
+                foreach (var line in File.ReadLines(filePath))
+                {
+                    var parts = line.Split(';');
+                    if (parts.Length == 2)
+                    {
+                        var referenceParts = parts[0].Split(' ');
+                        var book = referenceParts[0];
+                        var chapterAndVerse = referenceParts[1].Split(':');
+                        var chapter = int.Parse(chapterAndVerse[0]);
+                        var verseRange = chapterAndVerse[1].Split('-');
+                        var startVerse = int.Parse(verseRange[0]);
+                        var endVerse = verseRange.Length > 1 ? int.Parse(verseRange[1]) : startVerse;
+
+                        scriptures.Add(new Scripture(new Reference(book, chapter, startVerse, endVerse), parts[1]));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Error loading scriptures from file: " + ex.Message);
+            }
+
+            return scriptures;
+        }
+
+        // Method to guide the user through memorizing a scripture
+        public static void MemorizeScripture(Scripture scripture)
+        {
             while (!scripture.IsFullyHidden())
             {
                 Console.Clear();
@@ -75,6 +147,11 @@ namespace ScriptureHider
         public bool IsFullyHidden()
         {
             return _words.All(word => word.IsHidden());
+        }
+
+        public override string ToString()
+        {
+            return _reference.ToString();
         }
     }
 
